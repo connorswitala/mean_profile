@@ -80,5 +80,13 @@ class Profile {
     inline double sutherlands(double T);
     void writeCsvProfile(const std::string& filename);
     void writeTecplotProfile(const std::string& filename);
+    void generateLine(const std::string& filename);
+
+    void solve_v();
+    
+    vector<double> linear_interpolate(
+    const vector<double>& y_data,
+    const vector<double>& f_data,
+    const vector<double>& y_new);
 
 };
