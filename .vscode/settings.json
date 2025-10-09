@@ -70,6 +70,8 @@
         "thread": "cpp",
         "typeinfo": "cpp",
         "variant": "cpp",
-        "filesystem": "cpp"
+        "filesystem": "cpp",
+        "ranges": "cpp",
+        "text_encoding": "cpp"
     }
 }

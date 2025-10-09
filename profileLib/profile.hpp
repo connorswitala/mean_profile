@@ -89,4 +89,10 @@ class Profile {
     const vector<double>& f_data,
     const vector<double>& y_new);
 
+
 };
+
+vector<double> thomas_solve(const std::vector<double>& a,  // subdiag: a[0]=0
+             const std::vector<double>& b,  // diag
+             const std::vector<double>& c,  // superdiag: c[N-1]=0
+             const std::vector<double>& d);  // RHS

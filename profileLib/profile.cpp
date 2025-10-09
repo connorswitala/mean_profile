@@ -301,15 +301,18 @@ void Profile::create_u_guess() {
 
 // This function creates a vector of y+ from 0.1 to 400
 void Profile::create_yplus() {
+    const double y_plus_max = 275.0;
 
-    double y_plus_min = 0.0;
-    double y_plus_max = 275.0;
+    double b = 5.0;
 
     for (int i = 0; i < Ny; ++i) {
-        y_plus[i] = y_plus_min + i * y_plus_max / (Ny - 1);
+        double s = i/(Ny - 1);
+        y_plus[i] = y_plus_max * sinh(b * s)/ sinh(b);
     }
 
 }
+
+   
 
 vector<double> Profile::get_y_from_yplus() {
     for (int i = 0; i < Ny; ++i) {
@@ -427,29 +430,22 @@ void Profile::generateLine(const std::string& filename) {
 
 
 void Profile::solve_v() {
-
-    double dx = xs[2] - xs[0]; 
+    
     vector<double> rhov(Ny);
     rhov[0] = 0;
 
-    for (int j = 1; j < Ny; ++j) {
-        rhov[j] = (( -(y[j] - y[j-1]) * (rhor[j] * ur[j] - rhol[j] * ul[j]) / dx ) + rho[j-1] * v[j-1]); 
-    }
+    double a, b, c, d, dx;
 
-
-    double R_max = 0.0;
-    double R;
+    dx = xs[2] - xs[0];
 
     for (int j = 1; j < Ny; ++j) {
-        R = (rho[j] * v[j] - rho[j-1] * v[j-1])/(y[j] - y[j-1]) + (rhor[j] * ur[j] - rhol[j] * ul[j])/(dx);
-        if (R > R_max) R_max = R;
+        double S =  -(rhor[j] * ur[j] - rhol[j] * ul[j])/dx;
+        rhov[j] = S * (y[j] - y[j-1]) + rhov[j-1];
+
+        cout << S << "\t" << rhov[j] << endl;
     }
 
-    for (int j = 0; j < Ny; ++j) {
-        v[j] = rhov[j] / rho[j];  
-    }
 
-    cout << "-- Max Residual = " << R_max << endl;
 
 }
 
@@ -457,10 +453,10 @@ void Profile::writeCsvProfile(const std::string& filename) {
     std::ofstream ofs(filename);
     if (!ofs) throw runtime_error("writeCsvProfile: cannot open file: " + filename);
 
-    ofs << "y, ul, u, ur, v, T, rho\n";
+    ofs << "yp, y, ul, u, ur, v, T, rho\n";
 
     for (int i = 0; i < Ny; ++i)
-        ofs << y[i] << "," << ul[i] << "," << u[i] << "," << ur[i] << "," << v[i] << "," << T[i] << "," << rho[i] << "\n";
+        ofs << y_plus[i] << "," << y[i] << "," << ul[i] << "," << u[i] << "," << ur[i] << "," << v[i] << "," << T[i] << "," << rho[i] << "\n";
 }
 
 
@@ -511,4 +507,35 @@ vector<double> Profile::linear_interpolate(
 
 
 
+vector<double>
+thomas_solve(const std::vector<double>& a,  // subdiag: a[0]=0
+             const std::vector<double>& b,  // diag
+             const std::vector<double>& c,  // superdiag: c[N-1]=0
+             const std::vector<double>& d)  // RHS
+{
+    const int N = (int)b.size();
+    if ((int)a.size()!=N || (int)c.size()!=N || (int)d.size()!=N)
+        throw std::invalid_argument("a,b,c,d must have same length");
+    if (N == 0) return {};
+    std::vector<double> cp(N), dp(N), sol(N);
 
+    // forward sweep
+    double beta = b[0];
+    if (beta == 0.0) throw std::runtime_error("Zero pivot at i=0");
+    cp[0] = (N>1) ? c[0]/beta : 0.0;
+    dp[0] = d[0]/beta;
+
+    for (int i = 1; i < N; ++i) {
+        beta = b[i] - a[i]*cp[i-1];
+        if (beta == 0.0) throw std::runtime_error("Zero pivot in forward sweep");
+        cp[i] = (i < N-1) ? c[i]/beta : 0.0;       // last cp is unused
+        dp[i] = (d[i] - a[i]*dp[i-1]) / beta;
+    }
+
+    // back substitution
+    sol[N-1] = dp[N-1];
+    for (int i = N-2; i >= 0; --i)
+        sol[i] = dp[i] - cp[i]*sol[i+1];
+
+    return sol;
+}
